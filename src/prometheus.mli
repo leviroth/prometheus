@@ -12,9 +12,6 @@
 
 type metric_type =
   | Counter
-  | Gauge
-  | Summary
-  | Histogram
 
 module type NAME = sig
   type t = private string
@@ -80,24 +77,17 @@ module CollectorRegistry : sig
   val default : t
   (** The default registry. *)
 
-  val collect : t -> snapshot Lwt.t
+  val collect : t -> snapshot
   (** Read the current value of each metric. *)
 
   val register : t -> MetricInfo.t -> (unit -> Sample_set.t LabelSetMap.t) -> unit
   (** [register t metric collector] adds [metric] to the set of metrics being collected.
       It will call [collector ()] to collect the values each time [collect] is called. *)
 
-  val register_lwt : t -> MetricInfo.t -> (unit -> Sample_set.t LabelSetMap.t Lwt.t) -> unit
-  (** [register_lwt t metric collector] is the same as [register t metrics collector]
-      but [collector] returns [Sample_set.t LabelSetMap.t Lwt.t]. *)
-
   val register_pre_collect : t -> (unit -> unit) -> unit
   (** [register_pre_collect t fn] arranges for [fn ()] to be called at the start
       of each collection. This is useful if one expensive call provides
       information about multiple metrics. *)
-
-  val register_pre_collect_lwt : t -> (unit -> unit Lwt.t) -> unit
-  (** [register_pre_collect t fn] same as [register_pre_collect] but [fn] returns [unit Lwt.t]. *)
 end
 (** A collection of metric reporters. Usually, only {!CollectorRegistry.default} is used. *)
 
@@ -139,75 +129,4 @@ module Counter : sig
 end
 (** A counter is a cumulative metric that represents a single numerical value that only ever goes up. *)
 
-module Gauge : sig
-  include METRIC
 
-  val inc_one : t -> unit
-  val inc : t -> float -> unit
-  (** [inc t v] increases the current value of the guage by [v]. *)
-
-  val dec_one : t -> unit
-  val dec : t -> float -> unit
-  (** [dec t v] decreases the current value of the guage by [v]. *)
-
-  val set : t -> float -> unit
-  (** [set t v] sets the current value of the guage to [v]. *)
-
-  val track_inprogress : t -> (unit -> 'a Lwt.t) -> 'a Lwt.t
-  (** [track_inprogress t f] increases the value of the gauge by one while [f ()] is running. *)
-
-  val time : t -> (unit -> float) -> (unit -> 'a Lwt.t) -> 'a Lwt.t
-  (** [time t gettime f] calls [gettime ()] before and after executing [f ()] and
-      increases the metric by the difference.
-  *)
-end
-(** A gauge is a metric that represents a single numerical value that can arbitrarily go up and down. *)
-
-module Summary : sig
-  include METRIC
-
-  val observe : t -> float -> unit
-  (** [observe t v] increases the total by [v] and the count by one. *)
-
-  val time : t -> (unit -> float) -> (unit -> 'a Lwt.t) -> 'a Lwt.t
-  (** [time t gettime f] calls [gettime ()] before and after executing [f ()] and
-      observes the difference. *)
-end
-(** A summary is a metric that records both the number of readings and their total.
-    This allows calculating the average. *)
-
-module Histogram_spec : sig
-  type t
-
-  val of_linear : float -> float -> int -> t
-  (** [of_linear start interval count] will return a histogram type with
-      [count] buckets with values starting at [start] and [interval] apart:
-      [(start, start+interval, start + (2 * interval), ... start + ((count-1) * interval), infinity)].
-      [count] does not include the infinity bucket.
-  *)
-
-  val of_exponential : float -> float -> int -> t
-  (** [of_exponential start factor count] will return a histogram type with
-      [count] buckets with values starting at [start] and every next item [previous*factor].
-      [count] does not include the infinity bucket.
-  *)
-
-  val of_list : float list -> t
-  (** [of_list [0.5; 1.]] will return a histogram with buckets [0.5;1.;infinity]. *)
-end
-
-module type HISTOGRAM = sig
-  include METRIC
-
-  val observe : t -> float -> unit
-  (** [observe t v] adds one to the appropriate bucket for v and adds v to the sum. *)
-
-  val time : t -> (unit -> float) -> (unit -> 'a Lwt.t) -> 'a Lwt.t
-  (** [time t gettime f] calls [gettime ()] before and after executing [f ()] and
-      observes the difference. *)
-end
-
-module Histogram (Buckets : sig val spec : Histogram_spec.t end) : HISTOGRAM
-
-module DefaultHistogram : HISTOGRAM
-(** A histogram configured with reasonable defaults for measuring network request times in seconds. *)
