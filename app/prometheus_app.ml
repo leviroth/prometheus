@@ -16,6 +16,9 @@ module TextFormat_0_0_4 = struct
 
   let output_metric_type f = function
     | Counter   -> Fmt.string f "counter"
+    | Gauge     -> Fmt.string f "gauge"
+    | Summary   -> Fmt.string f "summary"
+    | Histogram -> Fmt.string f "histogram"
 
   let output_unquoted f s =
     Fmt.string f @@ Re.replace re_unquoted_escapes ~f:quote s
@@ -112,6 +115,10 @@ module Runtime = struct
     simple_metric ~metric_type:Counter "ocaml_gc_major_collections" (fun () -> float_of_int (!current).Gc.major_collections)
       ~help:"Number of major collection cycles completed since the program was started."
 
+  let ocaml_gc_heap_words =
+    simple_metric ~metric_type:Gauge "ocaml_gc_heap_words" (fun () -> float_of_int (!current).Gc.heap_words)
+      ~help:"Total size of the major heap, in words."
+
   let ocaml_gc_compactions =
     simple_metric ~metric_type:Counter "ocaml_gc_compactions" (fun () -> float_of_int (!current).Gc.compactions)
       ~help:"Number of heap compactions since the program was started."
@@ -129,6 +136,7 @@ module Runtime = struct
     ocaml_gc_major_words;
     ocaml_gc_minor_collections;
     ocaml_gc_major_collections;
+    ocaml_gc_heap_words;
     ocaml_gc_compactions;
     ocaml_gc_top_heap_words;
     process_cpu_seconds_total;

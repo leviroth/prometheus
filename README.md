@@ -1,9 +1,8 @@
 This branch has the Lwt dependency completely removed and replaced with a very
-minimal `Cohttp_async` implementation of `Prometheus_app`. Along the way, I
-deleted all the metric types except for `Counter`.
+minimal `Cohttp_async` implementation of `Prometheus_app`.
 
 Think of this as an incredibly lazy fork minted for purposes of getting metrics
-up and running in an app that uses Async and only needs counters.
+up and running in an app that uses Async.
 
 ---
 
