@@ -80,6 +80,8 @@ module CollectorRegistry : sig
   val default : t
   (** The default registry. *)
 
+  val collect_sync : t -> snapshot
+
   val collect : t -> snapshot Lwt.t
   (** Read the current value of each metric. *)
 
